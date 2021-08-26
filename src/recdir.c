@@ -70,17 +70,17 @@ RECDIR *recdir_open(const char *dir_path)
     return recdir;
 }
 
-struct dirent *recdir_read(RECDIR *recdirp)
+struct dirent *recdir_read(RECDIR *recdir)
 {
-    while (recdirp->stack_size > 0) {
-        RECDIR_Frame *top = &recdirp->stack[recdirp->stack_size - 1];
+    while (recdir->stack_size > 0) {
+        RECDIR_Frame *top = recdir_top(recdir);
         struct dirent *ent = readdir(top->dir);
         if (ent) {
             if (ent->d_type == DT_DIR) {
                 if (strcmp(ent->d_name, ".") == 0 || strcmp(ent->d_name, "..") == 0) {
                     continue;
                 } else {
-                    recdir_push(recdirp, join_path(top->path, ent->d_name));
+                    recdir_push(recdir, join_path(top->path, ent->d_name));
                     continue;
                 }
             } else {
@@ -90,7 +90,7 @@ struct dirent *recdir_read(RECDIR *recdirp)
             if (errno) {
                 return NULL;
             } else {
-                recdir_pop(recdirp);
+                recdir_pop(recdir);
                 continue;
             }
         }
@@ -99,10 +99,10 @@ struct dirent *recdir_read(RECDIR *recdirp)
     return NULL;
 }
 
-void recdir_close(RECDIR *recdirp)
+void recdir_close(RECDIR *recdir)
 {
-    while (recdirp->stack_size > 0) {
-        recdir_pop(recdirp);
+    while (recdir->stack_size > 0) {
+        recdir_pop(recdir);
     }
-    free(recdirp);
+    free(recdir);
 }
