@@ -1,4 +1,4 @@
-# File Deduplicator
+# Duplicate Files Searcher
 
 ## Quick Start
 
