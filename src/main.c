@@ -19,14 +19,15 @@ int main(int argc, char **argv)
     errno = 0;
     struct dirent *ent = recdir_read(recdir);
     while (ent) {
-        printf("recdir file: %s/%s\n", recdir_path(recdir), ent->d_name);
+        printf("recdir file: %s/%s\n", recdir_top(recdir)->path,
+               ent->d_name);
         ent = recdir_read(recdir);
     }
 
     if (errno != 0) {
         fprintf(stderr,
                 "ERROR: could not read the directory: %s\n",
-                recdir_path(recdir));
+                recdir_top(recdir)->path);
         exit(1);
     }
 

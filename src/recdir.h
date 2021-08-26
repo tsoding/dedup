@@ -22,9 +22,9 @@ typedef struct {
 
 char *join_path(const char *base, const char *file);
 
+RECDIR_Frame *recdir_top(RECDIR *recdir);
 int recdir_push(RECDIR *recdir, char *path);
 void recdir_pop(RECDIR *recdir);
-char *recdir_path(RECDIR *recdir);
 
 RECDIR *recdir_open(const char *dir_path);
 struct dirent *recdir_read(RECDIR *recdirp);
