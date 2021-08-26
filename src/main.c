@@ -49,7 +49,7 @@ void hash_of_file(const char *file_path, Hash *hash)
     size_t buffer_size = fread(buffer, 1, sizeof(buffer), f);
     while (buffer_size > 0) {
         sha256_update(&ctx, buffer, buffer_size);
-        buffer_size = fread(buffer, sizeof(buffer), 1, f);
+        buffer_size = fread(buffer, 1, sizeof(buffer), f);
     }
 
     if (ferror(f)) {
