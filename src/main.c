@@ -31,6 +31,7 @@ void hash_as_cstr(Hash hash, char output[32*2 + 1])
     output[32*2] = '\0';
 }
 
+// TODO: speed up hash_of_file function
 void hash_of_file(const char *file_path, Hash *hash)
 {
     SHA256_CTX ctx;
@@ -44,7 +45,6 @@ void hash_of_file(const char *file_path, Hash *hash)
         exit(1);
     }
 
-    // TODO: you may wanna allocate a bigger chunk of memory to compute the hash of the file faster
     BYTE buffer[1024];
     size_t buffer_size = fread(buffer, 1, sizeof(buffer), f);
     while (buffer_size > 0) {
