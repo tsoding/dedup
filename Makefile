@@ -1,3 +1,4 @@
+# TODO: not compilable by GCC 8.3.0
 CC=clang
 CFLAGS=-Wall -Wextra -std=c11 -pedantic -ggdb
 LIBS=
