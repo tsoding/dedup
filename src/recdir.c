@@ -4,12 +4,13 @@
 #include <errno.h>
 #include "./recdir.h"
 
+// TODO: try to get rid of join_path in as many places as possible
 char *join_path(const char *base, const char *file)
 {
     size_t base_len = strlen(base);
     size_t file_len = strlen(file);
 
-    // TODO: avoid using malloc in here
+
     char *begin = malloc(base_len + file_len + PATH_SEP_LEN + 1);
     assert(begin != NULL);
 
