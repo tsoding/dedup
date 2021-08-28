@@ -36,8 +36,8 @@ void usage(FILE *stream)
 
 int main(int argc, char **argv)
 {
-    uint64_t *file_size = flag_uint64("file-size", 1024, "The size of the file to generate in bytes");
-    uint64_t *buffer_size = flag_uint64("buffer-size", 1024, "The size of the buffer to use during the generation process");
+    size_t *file_size = flag_size("file-size", 1024, "The size of the file to generate in bytes");
+    size_t *buffer_size = flag_size("buffer-size", 1024, "The size of the buffer to use during the generation process");
 
     if (!flag_parse(argc, argv)) {
         usage(stderr);
