@@ -5,6 +5,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include <errno.h>
+#include <time.h>
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -140,6 +141,7 @@ int main(int argc, char **argv)
                 buffer_cap_index < ARRAY_LEN(buffer_caps);
                 ++buffer_cap_index) {
             Hof_Func hof = hof_func_attribs[hof_func_index].hof_func;
+            const char *hof_label = hof_func_attribs[hof_func_index].label;
             size_t buffer_cap = buffer_caps[buffer_cap_index];
 
             Hash_Sum_File hsf = make_hash_sum_file(content_file_path, content, content_size);
@@ -147,9 +149,24 @@ int main(int argc, char **argv)
             const char *file_path = next_hash_and_file(&hsf, &expected_hash);
             while (file_path != NULL) {
                 Hash actual_hash;
-                // TODO: print the timings as a plain list
                 // TODO: research how to gnuplot the results
+
+                struct timespec start, end;
+                if (clock_gettime(CLOCK_MONOTONIC, &start) < 0) {
+                    fprintf(stderr, "ERROR: could not get the current clock time: %s\n",
+                            strerror(errno));
+                    exit(1);
+                }
                 hof(file_path, buffer, buffer_cap, &actual_hash);
+                if (clock_gettime(CLOCK_MONOTONIC, &end) < 0) {
+                    fprintf(stderr, "ERROR: could not get the current clock time: %s\n",
+                            strerror(errno));
+                    exit(1);
+                }
+                printf("%s,%zu,%s,%ld.%09ld\n", 
+                       hof_label, buffer_cap, file_path, 
+                       end.tv_sec - start.tv_sec,
+                       end.tv_nsec - start.tv_nsec);
 
                 if (memcmp(&expected_hash, &actual_hash, sizeof(Hash)) != 0) {
                     fprintf(stderr, "ERROR: unexpected hash of file %s\n", file_path);
