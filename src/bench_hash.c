@@ -31,9 +31,11 @@ typedef struct {
 } Buffer_Cap_Attrib;
 
 size_t buffer_caps[] = {
-    1024,
-    512*1024,
-    1024*1024,
+             1024,
+         256*1024,
+         512*1024,
+        1024*1024,
+    256*1024*1024,
     512*1024*1024,
 };
 
@@ -134,6 +136,7 @@ int main(int argc, char **argv)
         exit(1);
     }
 
+    printf("method,buffer-size,file-size,time-secs\n");
     for (size_t hof_func_index = 0;
             hof_func_index < ARRAY_LEN(hof_func_attribs);
             ++hof_func_index) {
@@ -151,6 +154,17 @@ int main(int argc, char **argv)
                 Hash actual_hash;
                 // TODO: research how to gnuplot the results
 
+                size_t file_size;
+                {
+                    struct stat statbuf;
+                    if (stat(file_path, &statbuf) < 0) {
+                        fprintf(stderr, "ERROR: could not determine the size of file %s: %s\n", 
+                                file_path, strerror(errno));
+                        exit(1);
+                    }
+                    file_size = statbuf.st_size;
+                }
+
                 struct timespec start, end;
                 if (clock_gettime(CLOCK_MONOTONIC, &start) < 0) {
                     fprintf(stderr, "ERROR: could not get the current clock time: %s\n",
@@ -163,8 +177,8 @@ int main(int argc, char **argv)
                             strerror(errno));
                     exit(1);
                 }
-                printf("%s,%zu,%s,%ld.%09ld\n", 
-                       hof_label, buffer_cap, file_path, 
+                printf("%s,%zu,%zu,%ld.%09ld\n", 
+                       hof_label, buffer_cap, file_size, 
                        end.tv_sec - start.tv_sec,
                        end.tv_nsec - start.tv_nsec);
 

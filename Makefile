@@ -15,9 +15,9 @@ gargen: src/gargen.c
 
 .PHONY: bench
 bench: bench_hash SHA256SUM
-	./bench_hash SHA256SUM
+	./bench_hash SHA256SUM | tee "bench_hash.report"
 
-BINS=input1K.bin input1M.bin
+BINS=input1K.bin input256K.bin input512K.bin input1M.bin 
 
 SHA256SUM: $(BINS)
 	sha256sum -z $(BINS) > SHA256SUM
@@ -25,5 +25,17 @@ SHA256SUM: $(BINS)
 input1K.bin: gargen
 	./gargen -file-size 1K input1K.bin
 
+input256K.bin: gargen
+	./gargen -file-size 256K input256K.bin
+
+input512K.bin: gargen
+	./gargen -file-size 512K input512K.bin
+
 input1M.bin: gargen
 	./gargen -file-size 1M input1M.bin
+
+input256M.bin: gargen
+	./gargen -file-size 256M input256M.bin
+
+input512M.bin: gargen
+	./gargen -file-size 512M input512M.bin

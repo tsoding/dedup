@@ -1,5 +1,6 @@
 dedup
 *.bin
 bench_hash
+bench_hash.report
 gargen
 SHA256SUM
