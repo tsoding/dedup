@@ -2,6 +2,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 #include <errno.h>
 #include "./hash.h"
@@ -122,11 +123,31 @@ static char hex_digit(unsigned int digit)
     assert(0 && "unreachable");
 }
 
-void hash_as_cstr(Hash hash, char output[32*2 + 1])
+void hash_as_cstr(Hash input, char output[32*2 + 1])
 {
     for (size_t i = 0; i < 32; ++i) {
-        output[i*2 + 0] = hex_digit(hash.bytes[i] / 0x10);
-        output[i*2 + 1] = hex_digit(hash.bytes[i]);
+        output[i*2 + 0] = hex_digit(input.bytes[i] / 0x10);
+        output[i*2 + 1] = hex_digit(input.bytes[i]);
     }
     output[32*2] = '\0';
+}
+
+static bool parse_hexdigit(char c, uint8_t *digit)
+{
+    if ('0' <= c && c <= '9') *digit = c - '0';
+    else if ('a' <= c && c <= 'f') *digit = c - 'a' + 10;
+    else if ('A' <= c && c <= 'F') *digit = c - 'a' + 10;
+    else return false;
+    return true;
+}
+
+bool parse_hash(const char input[64], Hash *output)
+{
+    for (size_t i = 0; i < 32; ++i) {
+        uint8_t a, b;
+        if (!parse_hexdigit(input[2*i + 0], &a)) return false;
+        if (!parse_hexdigit(input[2*i + 1], &b)) return false;
+        output->bytes[i] = a * 0x10 + b;
+    }
+    return true;
 }

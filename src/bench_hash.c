@@ -20,7 +20,7 @@ void usage(FILE *stream)
 
 typedef void (*Hof_Func)(const char *file_path, BYTE *buffer, size_t buffer_cap, Hash *hash);
 
-#define BUFFER_MAX_CAP (1000*1000*1000)
+#define BUFFER_MAX_CAP (1024*1024*1024)
 
 #define ARRAY_LEN(xs) (sizeof(xs) / sizeof((xs)[0]))
 
@@ -30,9 +30,10 @@ typedef struct {
 } Buffer_Cap_Attrib;
 
 Buffer_Cap_Attrib buffer_cap_attribs[] = {
-    {.label = "CAPACITY SMOL", .value = 1024},
-    {.label = "CAPACITY HALF", .value = BUFFER_MAX_CAP / 2},
-    {.label = "CAPACITY FULL", .value = BUFFER_MAX_CAP},
+    {.label = "1K",   .value = 1024},
+    {.label = "512K", .value = 512*1024},
+    {.label = "1M",   .value = 1024*1024},
+    {.label = "512M", .value = 512*1024*1024},
 };
 
 typedef struct {
@@ -49,25 +50,6 @@ Hof_Func_Attrib hof_func_attribs[] = {
 #define HASH_LEN 64
 #define SEP_LEN 2
 
-bool parse_hexdigit(char c, uint8_t *digit)
-{
-    if ('0' <= c && c <= '9') *digit = c - '0';
-    else if ('a' <= c && c <= 'f') *digit = c - 'a' + 10;
-    else if ('A' <= c && c <= 'F') *digit = c - 'a' + 10;
-    else return false;
-    return true;
-}
-
-bool parse_hash(const char input[HASH_LEN], Hash *output)
-{
-    for (size_t i = 0; i < 32; ++i) {
-        uint8_t a, b;
-        if (!parse_hexdigit(input[2*i + 0], &a)) return false;
-        if (!parse_hexdigit(input[2*i + 1], &b)) return false;
-        output->bytes[i] = a * 0x10 + b;
-    }
-    return true;
-}
 
 void process_content(const char *content_file_path, char *content, size_t content_size, 
                      Hof_Func hof, BYTE *buffer, size_t buffer_cap)
