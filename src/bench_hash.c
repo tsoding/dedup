@@ -50,37 +50,42 @@ Hof_Func_Attrib hof_func_attribs[] = {
 #define HASH_LEN 64
 #define SEP_LEN 2
 
-// TODO: open the process of content iteration
-void process_content(const char *content_file_path, char *content, size_t content_size, 
-                     Hof_Func hof, BYTE *buffer, size_t buffer_cap)
+typedef struct {
+    const char *content_file_path;
+    char *content;
+    size_t content_size;
+    size_t line_number;
+} Hash_Sum_File;
+
+Hash_Sum_File make_hash_sum_file(const char *content_file_path, char *content, size_t content_size)
 {
-    for (size_t line_number = 0; content_size > 0; ++line_number) {
-        size_t line_size = strlen(content);
+    Hash_Sum_File result;
+    result.content_file_path = content_file_path;
+    result.content = content;
+    result.content_size = content_size;
+    result.line_number = 0;
+    return result;
+}
 
-        Hash expected_hash;
-        if (line_size < HASH_LEN + SEP_LEN || !parse_hash(content, &expected_hash)) {
+const char *next_hash_and_file(Hash_Sum_File *hsf, Hash *expected_hash)
+{
+    if (hsf->content_size > 0) {
+        size_t line_size = strlen(hsf->content);
+
+        if (line_size < HASH_LEN + SEP_LEN || !parse_hash(hsf->content, expected_hash)) {
             fprintf(stderr, "%s:%zu: ERROR: incorrect hash line\n",
-                    content_file_path, line_number);
+                    hsf->content_file_path, hsf->line_number);
             exit(1);
         }
 
-        const char *file_path = content + HASH_LEN + SEP_LEN;
-        
-        Hash actual_hash;
-        hof(file_path, buffer, buffer_cap, &actual_hash);
+        const char *file_path = hsf->content + HASH_LEN + SEP_LEN;
 
-        if (memcmp(&expected_hash, &actual_hash, sizeof(Hash)) != 0) {
-            fprintf(stderr, "ERROR: unexpected hash of file %s\n", file_path);
-            char hash_cstr[32*2 + 1];
-            hash_as_cstr(expected_hash, hash_cstr);
-            fprintf(stderr, "Expected: %s\n", hash_cstr);
-            hash_as_cstr(actual_hash, hash_cstr);
-            fprintf(stderr, "Actual:   %s\n", hash_cstr);
-            exit(1);
-        }
+        hsf->content += line_size + 1;
+        hsf->content_size -= line_size + 1;
 
-        content += line_size + 1;
-        content_size -= line_size + 1;
+        return file_path;
+    } else {
+        return NULL;
     }
 }
 
@@ -134,11 +139,30 @@ int main(int argc, char **argv)
         for (size_t buffer_cap_index = 0;
                 buffer_cap_index < ARRAY_LEN(buffer_caps);
                 ++buffer_cap_index) {
-            // TODO: print the timings as a plain list
-            // TODO: research how to gnuplot the results
             Hof_Func hof = hof_func_attribs[hof_func_index].hof_func;
             size_t buffer_cap = buffer_caps[buffer_cap_index];
-            process_content(content_file_path, content, content_size, hof, buffer, buffer_cap);
+
+            Hash_Sum_File hsf = make_hash_sum_file(content_file_path, content, content_size);
+            Hash expected_hash;
+            const char *file_path = next_hash_and_file(&hsf, &expected_hash);
+            while (file_path != NULL) {
+                Hash actual_hash;
+                // TODO: print the timings as a plain list
+                // TODO: research how to gnuplot the results
+                hof(file_path, buffer, buffer_cap, &actual_hash);
+
+                if (memcmp(&expected_hash, &actual_hash, sizeof(Hash)) != 0) {
+                    fprintf(stderr, "ERROR: unexpected hash of file %s\n", file_path);
+                    char hash_cstr[32*2 + 1];
+                    hash_as_cstr(expected_hash, hash_cstr);
+                    fprintf(stderr, "Expected: %s\n", hash_cstr);
+                    hash_as_cstr(actual_hash, hash_cstr);
+                    fprintf(stderr, "Actual:   %s\n", hash_cstr);
+                    exit(1);
+                }
+
+                file_path = next_hash_and_file(&hsf, &expected_hash);
+            }
         }
     }
 
