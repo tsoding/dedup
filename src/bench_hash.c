@@ -29,11 +29,11 @@ typedef struct {
     size_t value;
 } Buffer_Cap_Attrib;
 
-Buffer_Cap_Attrib buffer_cap_attribs[] = {
-    {.label = "1K",   .value = 1024},
-    {.label = "512K", .value = 512*1024},
-    {.label = "1M",   .value = 1024*1024},
-    {.label = "512M", .value = 512*1024*1024},
+size_t buffer_caps[] = {
+    1024,
+    512*1024,
+    1024*1024,
+    512*1024*1024,
 };
 
 typedef struct {
@@ -50,6 +50,7 @@ Hof_Func_Attrib hof_func_attribs[] = {
 #define HASH_LEN 64
 #define SEP_LEN 2
 
+// TODO: open the process of content iteration
 void process_content(const char *content_file_path, char *content, size_t content_size, 
                      Hof_Func hof, BYTE *buffer, size_t buffer_cap)
 {
@@ -131,11 +132,12 @@ int main(int argc, char **argv)
             hof_func_index < ARRAY_LEN(hof_func_attribs);
             ++hof_func_index) {
         for (size_t buffer_cap_index = 0;
-                buffer_cap_index < ARRAY_LEN(buffer_cap_attribs);
+                buffer_cap_index < ARRAY_LEN(buffer_caps);
                 ++buffer_cap_index) {
+            // TODO: print the timings as a plain list
+            // TODO: research how to gnuplot the results
             Hof_Func hof = hof_func_attribs[hof_func_index].hof_func;
-            size_t buffer_cap = buffer_cap_attribs[buffer_cap_index].value;
-
+            size_t buffer_cap = buffer_caps[buffer_cap_index];
             process_content(content_file_path, content, content_size, hof, buffer, buffer_cap);
         }
     }
