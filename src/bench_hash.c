@@ -3,6 +3,8 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <string.h>
+#include <errno.h>
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -10,8 +12,6 @@
 #include <fcntl.h>
 
 #include "./hash.h"
-#define PROF
-#include "./prof.c"
 
 void usage(FILE *stream)
 {
@@ -50,7 +50,6 @@ Hof_Func_Attrib hof_func_attribs[] = {
 #define HASH_LEN 64
 #define SEP_LEN 2
 
-
 void process_content(const char *content_file_path, char *content, size_t content_size, 
                      Hof_Func hof, BYTE *buffer, size_t buffer_cap)
 {
@@ -67,9 +66,7 @@ void process_content(const char *content_file_path, char *content, size_t conten
         const char *file_path = content + HASH_LEN + SEP_LEN;
         
         Hash actual_hash;
-        begin_clock(file_path);
         hof(file_path, buffer, buffer_cap, &actual_hash);
-        end_clock();
 
         if (memcmp(&expected_hash, &actual_hash, sizeof(Hash)) != 0) {
             fprintf(stderr, "ERROR: unexpected hash of file %s\n", file_path);
@@ -130,28 +127,18 @@ int main(int argc, char **argv)
         exit(1);
     }
 
-    begin_clock("TOTAL");
-    {
-        for (size_t hof_func_index = 0;
-                hof_func_index < ARRAY_LEN(hof_func_attribs);
-                ++hof_func_index) {
-            begin_clock(hof_func_attribs[hof_func_index].label);
-            for (size_t buffer_cap_index = 0;
-                    buffer_cap_index < ARRAY_LEN(buffer_cap_attribs);
-                    ++buffer_cap_index) {
-                Hof_Func hof = hof_func_attribs[hof_func_index].hof_func;
-                size_t buffer_cap = buffer_cap_attribs[buffer_cap_index].value;
+    for (size_t hof_func_index = 0;
+            hof_func_index < ARRAY_LEN(hof_func_attribs);
+            ++hof_func_index) {
+        for (size_t buffer_cap_index = 0;
+                buffer_cap_index < ARRAY_LEN(buffer_cap_attribs);
+                ++buffer_cap_index) {
+            Hof_Func hof = hof_func_attribs[hof_func_index].hof_func;
+            size_t buffer_cap = buffer_cap_attribs[buffer_cap_index].value;
 
-                begin_clock(buffer_cap_attribs[buffer_cap_index].label);
-                process_content(content_file_path, content, content_size, hof, buffer, buffer_cap);
-                end_clock();
-            }
-            end_clock();
+            process_content(content_file_path, content, content_size, hof, buffer, buffer_cap);
         }
     }
-    end_clock();
-
-    dump_summary(stderr);
 
     return 0;
 }
