@@ -72,7 +72,7 @@ void hash_of_file_linux(const char *file_path, BYTE *buffer, size_t buffer_cap, 
         buffer_size = read(f, buffer, buffer_cap);
     }
 
-    if (buffer_cap < 0) {
+    if (buffer_size < 0) {
         fprintf(stderr, "ERROR: Could not read from file %s: %s\n",
                 file_path, strerror(errno));
         exit(1);
