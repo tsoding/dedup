@@ -20,24 +20,6 @@ void usage(FILE *stream)
 
 typedef void (*Hof_Func)(const char *file_path, BYTE *buffer, size_t buffer_cap, Hash *hash);
 
-void bench_file(const char *file_path, Hash expected_hash, BYTE *buffer, size_t buffer_cap, Hof_Func hof)
-{
-    Hash actual_hash;
-    begin_clock(file_path);
-    hof(file_path, buffer, buffer_cap, &actual_hash);
-    end_clock();
-
-    if (memcmp(&expected_hash, &actual_hash, sizeof(Hash)) != 0) {
-        fprintf(stderr, "Checksum failed on file %s\n", file_path);
-        char output[32*2 + 1];
-        hash_as_cstr(actual_hash, output);
-        fprintf(stderr, "Actual:   %s\n", output);
-        hash_as_cstr(expected_hash, output);
-        fprintf(stderr, "Expected: %s\n", output);
-        exit(1);
-    }
-}
-
 #define BUFFER_MAX_CAP (1000*1000*1000)
 
 #define ARRAY_LEN(xs) (sizeof(xs) / sizeof((xs)[0]))
