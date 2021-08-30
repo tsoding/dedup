@@ -14,6 +14,9 @@
 
 #include "./hash.h"
 
+#define STB_DS_IMPLEMENTATION
+#include "./stb_ds.h"
+
 void usage(FILE *stream)
 {
     fprintf(stream, "Usage: bench_hash <SHA256SUM>\n");
@@ -31,10 +34,10 @@ typedef struct {
 } Buffer_Cap_Attrib;
 
 size_t buffer_caps[] = {
-             1024,
-         256*1024,
-         512*1024,
-        1024*1024,
+    1024,
+    256*1024,
+    512*1024,
+    1024*1024,
     256*1024*1024,
     512*1024*1024,
 };
@@ -92,6 +95,13 @@ const char *next_hash_and_file(Hash_Sum_File *hsf, Hash *expected_hash)
     }
 }
 
+typedef struct {
+    const char *hof_label;
+    size_t buffer_cap;
+    size_t file_size;
+    size_t elapsed_nsecs;
+} Bench_Result;
+
 int main(int argc, char **argv)
 {
     if (argc < 2) {
@@ -136,7 +146,9 @@ int main(int argc, char **argv)
         exit(1);
     }
 
-    printf("method,buffer-size,file-size,time-secs\n");
+    Bench_Result *report = NULL;
+
+
     for (size_t hof_func_index = 0;
             hof_func_index < ARRAY_LEN(hof_func_attribs);
             ++hof_func_index) {
@@ -158,7 +170,7 @@ int main(int argc, char **argv)
                 {
                     struct stat statbuf;
                     if (stat(file_path, &statbuf) < 0) {
-                        fprintf(stderr, "ERROR: could not determine the size of file %s: %s\n", 
+                        fprintf(stderr, "ERROR: could not determine the size of file %s: %s\n",
                                 file_path, strerror(errno));
                         exit(1);
                     }
@@ -177,10 +189,13 @@ int main(int argc, char **argv)
                             strerror(errno));
                     exit(1);
                 }
-                printf("%s,%zu,%zu,%ld.%09ld\n", 
-                       hof_label, buffer_cap, file_size, 
-                       end.tv_sec - start.tv_sec,
-                       end.tv_nsec - start.tv_nsec);
+
+                Bench_Result bench_result;
+                bench_result.hof_label = hof_label;
+                bench_result.buffer_cap = buffer_cap;
+                bench_result.file_size = file_size;
+                bench_result.elapsed_nsecs = (end.tv_sec - start.tv_sec)*1000*1000*1000 + end.tv_nsec - start.tv_nsec;
+                arrput(report, bench_result);
 
                 if (memcmp(&expected_hash, &actual_hash, sizeof(Hash)) != 0) {
                     fprintf(stderr, "ERROR: unexpected hash of file %s\n", file_path);
@@ -195,6 +210,18 @@ int main(int argc, char **argv)
                 file_path = next_hash_and_file(&hsf, &expected_hash);
             }
         }
+    }
+
+#define Nsecs_Fmt "%zu.%09zu"
+#define Nsecs_Arg(arg) (arg)/1000/1000/1000, (arg)-(arg)/1000/1000/1000*1000*1000*1000
+
+    printf("method,buffer-size,file-size,time-secs\n");
+    for (ptrdiff_t i = 0; i < arrlen(report); ++i) {
+        printf("%s,%zu,%zu,"Nsecs_Fmt"\n",
+               report[i].hof_label,
+               report[i].buffer_cap,
+               report[i].file_size,
+               Nsecs_Arg(report[i].elapsed_nsecs));
     }
 
     return 0;
