@@ -97,11 +97,21 @@ const char *next_hash_and_file(Hash_Sum_File *hsf, Hash *expected_hash)
 }
 
 typedef struct {
+    size_t offset;
+    const char *label;
+    Supported_Type type;
+} Field;
+
+// TODO: bring method to Bench_Result so you can aggregate by method
+// It should be probably equal to size_t (cause our function can only aggregate by size_t-s)
+typedef struct {
     size_t buffer_cap;
     size_t file_size;
     size_t elapsed_nsecs;
 } Bench_Result;
 
+// TODO: replace Bench_Data_Point with Bench_Result
+// So you can have nested aggregation
 typedef struct {
     size_t x;
     size_t y;
@@ -114,6 +124,63 @@ typedef struct {
 
 #define Nsecs_Fmt "%zu.%09zu"
 #define Nsecs_Arg(arg) (arg)/1000/1000/1000, (arg)-(arg)/1000/1000/1000*1000*1000*1000
+
+// TODO: introduce customizable y_offset
+Bench_Aggregation *aggregate(Bench_Result *report, size_t key_offset, size_t x_offset)
+{
+    Bench_Aggregation *result = NULL;
+    for (ptrdiff_t i = 0; i < arrlen(report); ++i) {
+        size_t key = *(size_t*)((char*) &report[i] + key_offset);
+        size_t x = *(size_t*)((char*) &report[i] + x_offset);
+        Bench_Data_Point point = {
+            .x = x,
+            .y = report[i].elapsed_nsecs
+        };
+
+        ptrdiff_t index = hmgeti(result, key);
+        if (index >= 0) {
+            arrput(result[index].points, point);
+        } else {
+            Bench_Aggregation item = {
+                .key = key,
+                .points = NULL,
+            };
+            arrput(item.points, point);
+            hmputs(result, item);
+        }
+    }
+
+    return result;
+}
+
+void print_aggregation(Bench_Aggregation *agg, const char *key_label, const char *x_label, const char *y_label)
+{
+    for (size_t i = 0; i < hmlenu(agg); ++i) {
+        printf("%s = %zu\n", key_label, agg[i].key);
+        Bench_Data_Point *points = agg[i].points;
+
+        size_t max_y = 0;
+        for (size_t j = 0; j < arrlenu(points); ++j) {
+            if (points[j].y > max_y) {
+                max_y = points[j].y;
+            }
+        }
+
+        const size_t bar_len = 30;
+
+        printf("%s, %s\n", x_label, y_label);
+        for (size_t j = 0; j < arrlenu(points); ++j) {
+            double t = (double) points[j].y / (double) max_y;
+            size_t bar_count = (size_t) floor(bar_len * t);
+            printf("%09zu, "Nsecs_Fmt" ", points[j].x, Nsecs_Arg(points[j].y));
+            for (size_t bar = 0; bar < bar_count; ++bar) {
+                fputc('*', stdout);
+            }
+            fputc('\n', stdout);
+        }
+        printf("\n");
+    }
+}
 
 int main(int argc, char **argv)
 {
@@ -220,54 +287,15 @@ int main(int argc, char **argv)
             }
         }
 
-        Bench_Aggregation *aggregation_by_buffer_cap = NULL;
-        for (ptrdiff_t i = 0; i < arrlen(report); ++i) {
-            size_t buffer_cap = report[i].buffer_cap;
-            Bench_Data_Point point = {
-                .x = report[i].file_size,
-                .y = report[i].elapsed_nsecs
-            };
-
-            ptrdiff_t index = hmgeti(aggregation_by_buffer_cap, buffer_cap);
-            if (index >= 0) {
-                arrput(aggregation_by_buffer_cap[index].points, point);
-            } else {
-                Bench_Aggregation item = {
-                    .key = buffer_cap,
-                    .points = NULL,
-                };
-                arrput(item.points, point);
-                hmputs(aggregation_by_buffer_cap, item);
-            }
-        }
-
-        for (size_t i = 0; i < hmlenu(aggregation_by_buffer_cap); ++i) {
-            printf("hof_label = %s, buffer_cap = %zu\n",
-                   hof_label,
-                   aggregation_by_buffer_cap[i].key);
-            Bench_Data_Point *points = aggregation_by_buffer_cap[i].points;
-
-            size_t max_y = 0;
-            for (size_t j = 0; j < arrlenu(points); ++j) {
-                if (points[j].y > max_y) {
-                    max_y = points[j].y;
-                }
-            }
-
-            const size_t bar_len = 30;
-
-            printf("file_size, elapsed_nsecs\n");
-            for (size_t j = 0; j < arrlenu(points); ++j) {
-                double t = (double) points[j].y / (double) max_y;
-                size_t bar_count = (size_t) floor(bar_len * t);
-                printf("%09zu, "Nsecs_Fmt" ", points[j].x, Nsecs_Arg(points[j].y));
-                for (size_t bar = 0; bar < bar_count; ++bar) {
-                    fputc('*', stdout);
-                }
-                fputc('\n', stdout);
-            }
-            printf("\n");
-        }
+        printf("==============================\n");
+        printf("%s\n", hof_label);
+        printf("==============================\n");
+        Bench_Aggregation *aggregation_by_file_size =
+            aggregate(report,
+                      offsetof(Bench_Result, file_size),
+                      offsetof(Bench_Result, buffer_cap));
+        print_aggregation(aggregation_by_file_size,
+                          "file_size", "buffer_cap", "elapsed_nsecs");
 
         // Bench_Aggregation *aggregation_by_file_size = NULL;
     }
