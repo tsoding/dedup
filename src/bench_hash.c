@@ -112,21 +112,21 @@ typedef struct {
 typedef struct {
     size_t key;
     Bench_Point *points;
-} Bench_Aggregation;
+} Bench_Group;
 
 #define Nsecs_Fmt "%zu.%09zu"
 #define Nsecs_Arg(arg) (arg)/1000/1000/1000, (arg)-(arg)/1000/1000/1000*1000*1000*1000
 
-static Bench_Aggregation *aggregate(Bench_Point *points, size_t key_offset)
+static Bench_Group *aggregate(Bench_Point *points, size_t key_offset)
 {
-    Bench_Aggregation *result = NULL;
+    Bench_Group *result = NULL;
     for (ptrdiff_t i = 0; i < arrlen(points); ++i) {
         size_t key = *(size_t*)((char*) &points[i] + key_offset);
         ptrdiff_t index = hmgeti(result, key);
         if (index >= 0) {
             arrput(result[index].points, points[i]);
         } else {
-            Bench_Aggregation item = {
+            Bench_Group item = {
                 .key = key,
                 .points = NULL,
             };
@@ -138,13 +138,13 @@ static Bench_Aggregation *aggregate(Bench_Point *points, size_t key_offset)
     return result;
 }
 
-void print_aggregation(Bench_Aggregation *agg, const char *key_label,
+void print_aggregation(Bench_Group *group, const char *key_label,
                        size_t x_offset, const char *x_label,
                        size_t y_offset, const char *y_label)
 {
-    for (size_t i = 0; i < hmlenu(agg); ++i) {
-        printf("%s = %zu\n", key_label, agg[i].key);
-        Bench_Point *points = agg[i].points;
+    for (size_t i = 0; i < hmlenu(group); ++i) {
+        printf("%s = %zu\n", key_label, group[i].key);
+        Bench_Point *points = group[i].points;
 
         size_t max_y = 0;
         for (size_t j = 0; j < arrlenu(points); ++j) {
@@ -280,8 +280,8 @@ int main(int argc, char **argv)
         printf("==============================\n");
         printf("%s\n", hof_label);
         printf("==============================\n");
-        Bench_Aggregation *agg = aggregate(points, offsetof(Bench_Point, file_size));
-        print_aggregation(agg,
+        Bench_Group *group = aggregate(points, offsetof(Bench_Point, file_size));
+        print_aggregation(group,
             "file_size",
             offsetof(Bench_Point, buffer_cap), "buffer_cap",
             offsetof(Bench_Point, elapsed_nsecs), "elapsed_nsecs");
