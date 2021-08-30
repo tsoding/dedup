@@ -6,6 +6,7 @@
 #include <string.h>
 #include <errno.h>
 #include <time.h>
+#include <math.h>
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -96,11 +97,23 @@ const char *next_hash_and_file(Hash_Sum_File *hsf, Hash *expected_hash)
 }
 
 typedef struct {
-    const char *hof_label;
     size_t buffer_cap;
     size_t file_size;
     size_t elapsed_nsecs;
 } Bench_Result;
+
+typedef struct {
+    size_t x;
+    size_t y;
+} Bench_Data_Point;
+
+typedef struct {
+    size_t key;
+    Bench_Data_Point *points;
+} Bench_Aggregation;
+
+#define Nsecs_Fmt "%zu.%09zu"
+#define Nsecs_Arg(arg) (arg)/1000/1000/1000, (arg)-(arg)/1000/1000/1000*1000*1000*1000
 
 int main(int argc, char **argv)
 {
@@ -147,16 +160,13 @@ int main(int argc, char **argv)
     }
 
     Bench_Result *report = NULL;
+    for (size_t hof_func_index = 0; hof_func_index < ARRAY_LEN(hof_func_attribs); ++hof_func_index) {
+        arrsetlen(report, 0);
 
+        Hof_Func hof = hof_func_attribs[hof_func_index].hof_func;
+        const char *hof_label = hof_func_attribs[hof_func_index].label;
 
-    for (size_t hof_func_index = 0;
-            hof_func_index < ARRAY_LEN(hof_func_attribs);
-            ++hof_func_index) {
-        for (size_t buffer_cap_index = 0;
-                buffer_cap_index < ARRAY_LEN(buffer_caps);
-                ++buffer_cap_index) {
-            Hof_Func hof = hof_func_attribs[hof_func_index].hof_func;
-            const char *hof_label = hof_func_attribs[hof_func_index].label;
+        for (size_t buffer_cap_index = 0; buffer_cap_index < ARRAY_LEN(buffer_caps); ++buffer_cap_index) {
             size_t buffer_cap = buffer_caps[buffer_cap_index];
 
             Hash_Sum_File hsf = make_hash_sum_file(content_file_path, content, content_size);
@@ -191,7 +201,6 @@ int main(int argc, char **argv)
                 }
 
                 Bench_Result bench_result;
-                bench_result.hof_label = hof_label;
                 bench_result.buffer_cap = buffer_cap;
                 bench_result.file_size = file_size;
                 bench_result.elapsed_nsecs = (end.tv_sec - start.tv_sec)*1000*1000*1000 + end.tv_nsec - start.tv_nsec;
@@ -210,18 +219,57 @@ int main(int argc, char **argv)
                 file_path = next_hash_and_file(&hsf, &expected_hash);
             }
         }
-    }
 
-#define Nsecs_Fmt "%zu.%09zu"
-#define Nsecs_Arg(arg) (arg)/1000/1000/1000, (arg)-(arg)/1000/1000/1000*1000*1000*1000
+        Bench_Aggregation *aggregation_by_buffer_cap = NULL;
+        for (ptrdiff_t i = 0; i < arrlen(report); ++i) {
+            size_t buffer_cap = report[i].buffer_cap;
+            Bench_Data_Point point = {
+                .x = report[i].file_size,
+                .y = report[i].elapsed_nsecs
+            };
 
-    printf("method,buffer-size,file-size,time-secs\n");
-    for (ptrdiff_t i = 0; i < arrlen(report); ++i) {
-        printf("%s,%zu,%zu,"Nsecs_Fmt"\n",
-               report[i].hof_label,
-               report[i].buffer_cap,
-               report[i].file_size,
-               Nsecs_Arg(report[i].elapsed_nsecs));
+            ptrdiff_t index = hmgeti(aggregation_by_buffer_cap, buffer_cap);
+            if (index >= 0) {
+                arrput(aggregation_by_buffer_cap[index].points, point);
+            } else {
+                Bench_Aggregation item = {
+                    .key = buffer_cap,
+                    .points = NULL,
+                };
+                arrput(item.points, point);
+                hmputs(aggregation_by_buffer_cap, item);
+            }
+        }
+
+        for (size_t i = 0; i < hmlenu(aggregation_by_buffer_cap); ++i) {
+            printf("hof_label = %s, buffer_cap = %zu\n",
+                   hof_label,
+                   aggregation_by_buffer_cap[i].key);
+            Bench_Data_Point *points = aggregation_by_buffer_cap[i].points;
+
+            size_t max_y = 0;
+            for (size_t j = 0; j < arrlenu(points); ++j) {
+                if (points[j].y > max_y) {
+                    max_y = points[j].y;
+                }
+            }
+
+            const size_t bar_len = 30;
+
+            printf("file_size, elapsed_nsecs\n");
+            for (size_t j = 0; j < arrlenu(points); ++j) {
+                double t = (double) points[j].y / (double) max_y;
+                size_t bar_count = (size_t) floor(bar_len * t);
+                printf("%09zu, "Nsecs_Fmt" ", points[j].x, Nsecs_Arg(points[j].y));
+                for (size_t bar = 0; bar < bar_count; ++bar) {
+                    fputc('*', stdout);
+                }
+                fputc('\n', stdout);
+            }
+            printf("\n");
+        }
+
+        // Bench_Aggregation *aggregation_by_file_size = NULL;
     }
 
     return 0;

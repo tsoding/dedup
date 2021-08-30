@@ -8,7 +8,7 @@ dedup: $(SRC)
 	$(CC) $(CFLAGS) -o dedup $(SRC) $(LIBS)
 
 bench_hash: src/bench_hash.c src/sha256.c src/hash.c
-	$(CC) $(CFLAGS) -o bench_hash src/bench_hash.c src/sha256.c src/hash.c
+	$(CC) $(CFLAGS) -o bench_hash src/bench_hash.c src/sha256.c src/hash.c -lm
 
 gargen: src/gargen.c
 	$(CC) $(CFLAGS) -o gargen src/gargen.c
