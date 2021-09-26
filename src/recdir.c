@@ -78,11 +78,8 @@ struct dirent *recdir_read(RECDIR *recdir)
         struct dirent *ent = readdir(top->dir);
         if (ent) {
             if (ent->d_type == DT_DIR) {
-                if (strcmp(ent->d_name, ".") == 0 || strcmp(ent->d_name, "..") == 0) {
-                    continue;
-                } else {
+                if (strcmp(ent->d_name, ".") != 0 && strcmp(ent->d_name, "..") != 0) {
                     recdir_push(recdir, join_path(top->path, ent->d_name));
-                    continue;
                 }
             } else {
                 return ent;
@@ -90,10 +87,8 @@ struct dirent *recdir_read(RECDIR *recdir)
         } else {
             if (errno) {
                 return NULL;
-            } else {
-                recdir_pop(recdir);
-                continue;
             }
+            recdir_pop(recdir);
         }
     }
 
