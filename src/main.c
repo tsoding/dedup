@@ -16,10 +16,8 @@ typedef struct {
 
 char hex_digit(unsigned int digit)
 {
-    digit = digit % 0x10;
-    if (digit <= 9) return digit + '0';
-    if (10 <= digit && digit <= 15) return digit - 10 + 'a';
-    assert(0 && "unreachable");
+    assert(digit <= 0xf);
+    return "0123456789abcdef"[digit & 0xf];
 }
 
 void hash_as_cstr(Hash hash, char output[32*2 + 1])
