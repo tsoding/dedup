@@ -1,6 +1,5 @@
-# TODO: not compilable by GCC 8.3.0
-CC=clang
-CFLAGS=-Wall -Wextra -std=c11 -pedantic -ggdb
+CC=gcc
+CFLAGS=-Wall -Wextra -pedantic -Ofast
 LIBS=
 SRC=src/main.c src/recdir.c src/sha256.c
 

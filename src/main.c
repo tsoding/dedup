@@ -1,4 +1,5 @@
 #define _DEFAULT_SOURCE
+#include <sys/stat.h>
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -14,24 +15,23 @@ typedef struct {
     BYTE bytes[32];
 } Hash;
 
-char hex_digit(unsigned int digit)
-{
-    digit = digit % 0x10;
-    if (digit <= 9) return digit + '0';
-    if (10 <= digit && digit <= 15) return digit - 10 + 'a';
-    assert(0 && "unreachable");
-}
-
 void hash_as_cstr(Hash hash, char output[32*2 + 1])
 {
     for (size_t i = 0; i < 32; ++i) {
-        output[i*2 + 0] = hex_digit(hash.bytes[i] / 0x10);
-        output[i*2 + 1] = hex_digit(hash.bytes[i]);
+        sprintf(&(output[i*2]), "%02x", (unsigned int) hash.bytes[i]);
     }
-    output[32*2] = '\0';
 }
 
-// TODO: speed up hash_of_file function
+long int stat_file_size(const char *file_name)
+{
+    struct stat st;
+
+    if (stat(file_name, &st) == 0)
+        return st.st_size;
+    else
+        return -1;
+}
+
 void hash_of_file(const char *file_path, Hash *hash)
 {
     SHA256_CTX ctx;
@@ -39,17 +39,29 @@ void hash_of_file(const char *file_path, Hash *hash)
     sha256_init(&ctx);
 
     FILE *f = fopen(file_path, "rb");
-    if (f == NULL) {
-        fprintf(stderr, "Could not open file %s: %s\n",
-                file_path, strerror(errno));
+    long int file_size = stat_file_size(file_path);
+
+    if (f == NULL || file_size == -1) {
+        fprintf(stderr, "Could not open file or find file size %s: %s\n",
+                file_path, strerror(errno)); // fail on symbolic link
         exit(1);
     }
 
-    BYTE buffer[1024];
-    size_t buffer_size = fread(buffer, 1, sizeof(buffer), f);
-    while (buffer_size > 0) {
-        sha256_update(&ctx, buffer, buffer_size);
-        buffer_size = fread(buffer, 1, sizeof(buffer), f);
+    if (file_size <= 2500000) { // crash on big files (stack size overflow)
+        BYTE buffer[file_size];
+            if (fread(buffer, sizeof(char), file_size, f) != (unsigned long) file_size) {
+                fprintf(stderr, "Error reading file %s: %s\n", file_path, strerror(errno));
+                exit(1);
+            }
+        sha256_update(&ctx, buffer, file_size);
+    } else {
+        BYTE *buffer = malloc(sizeof(char) * file_size);
+            if (fread(buffer, sizeof(char), file_size, f) != (unsigned long) file_size) {
+                fprintf(stderr, "Error reading file %s: %s\n", file_path, strerror(errno));
+                exit(1);
+            }
+        sha256_update(&ctx, buffer, file_size);
+        free(buffer);
     }
 
     if (ferror(f)) {
@@ -96,7 +108,6 @@ int main(int argc, char **argv)
         } else {
             arrput(db[index].paths, path);
         }
-
         ent = recdir_read(recdir);
     }
 
@@ -109,22 +120,20 @@ int main(int argc, char **argv)
 
     recdir_close(recdir);
 
-    // TODO: memory allocated by the iterations process is not cleaned up properly
-    // - join_path
-    // - dynamic array of paths
-    // - hash table
-
     for (ptrdiff_t i = 0; i < hmlen(db); ++i) {
         if (arrlen(db[i].paths) > 1) {
             char output[32*2 + 1];
             hash_as_cstr(db[i].key, output);
             printf("%s\n", output);
-
             for (ptrdiff_t j = 0; j < arrlen(db[i].paths); ++j) {
                 printf("    %s\n", db[i].paths[j]);
             }
         }
+        for (ptrdiff_t j = 0; j < arrlen(db[i].paths); ++j) {
+            free(db[i].paths[j]);
+        }
+        arrfree(db[i].paths);
     }
-
+    hmfree(db);
     return 0;
 }
