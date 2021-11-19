@@ -87,6 +87,9 @@ int main(int argc, char **argv)
     (void) argc;
     (void) argv;
 
+    if (setvbuf(stdout, NULL, _IOFBF, 0)) {
+        fprintf(stderr, "Error: %s\n", strerror(errno));
+    }
     // TODO: some sort of parallelization
 
     RECDIR *recdir = recdir_open(".");
