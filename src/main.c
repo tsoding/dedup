@@ -11,6 +11,19 @@
 #define STB_DS_IMPLEMENTATION
 #include "./stb_ds.h"
 
+/* COLOR DEFINE */
+#define REDHB "\x1B[0;101m"
+#define BBLK "\x1B[1;30m"
+#define BRED "\x1B[1;31m"
+#define BGRN "\x1B[1;32m"
+#define BYEL "\x1B[1;33m"
+#define BBLU "\x1B[1;34m"
+#define BMAG "\x1B[1;35m"
+#define BCYN "\x1B[1;36m"
+#define BWHT "\x1B[1;37m"
+#define RESET "\x1B[0m"
+/* END COLOR DEFINE */
+
 typedef struct {
     BYTE bytes[32];
 } Hash;
@@ -127,10 +140,11 @@ int main(int argc, char **argv)
         if (arrlen(db[i].paths) > 1) {
             char output[32*2 + 1];
             hash_as_cstr(db[i].key, output);
-            printf("%s\n", output);
+            printf("%s%s%s\n", BBLU, output, RESET);
             for (ptrdiff_t j = 0; j < arrlen(db[i].paths); ++j) {
-                printf("    %s\n", db[i].paths[j]);
+                printf("\t%s%s%s\n", BGRN, db[i].paths[j], RESET);
             }
+            printf("\n");
         }
         for (ptrdiff_t j = 0; j < arrlen(db[i].paths); ++j) {
             free(db[i].paths[j]);
